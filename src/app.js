@@ -14,7 +14,13 @@ app.use("/uploads", express.static(path.join(process.cwd(),"uploads")));
 app.use(express.json());   
 app.use(express.urlencoded({ extended: true }));
 app.use(cors()); //is se sari orgin allow hojayegi
-
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://your-app-name.netlify.app'
+  ],
+  credentials: true
+}));
 // Middleware for Auth  routes
 app.use("/api/v1/auth", AuthRouter);
 
