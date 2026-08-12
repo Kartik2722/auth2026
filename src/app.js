@@ -31,12 +31,11 @@ app.use("/api/v1/posts",userRouter);
 // for admin
 // app.use("api/v1/admin",router)
 
-app.use("/",()=>{
-  return res.json({
-    message:"perfectly working"
+app.get("/", (req, res) => {
+  res.json({
+    message: "perfectly working"
   });
-})
-
+});
 
 
 module.exports = app;
