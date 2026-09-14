@@ -5,6 +5,8 @@ const Comment = require("../models/Comment");
 const { json } = require("express");
 const imagekit = require("../config/imageKit");
 const path = require("path");
+const Notification = require("../models/Notifications");
+const { sendToUser } = require("../utils/socketManager");
 
 // create post controler function
 exports.createPost = async (req, res) => {
@@ -82,7 +84,7 @@ exports.handleLike = async (req, res) => {
     const PostId = req.params.id;
     const UserId = req.user._id;
 
-    const post = await Post.findById(PostId).select("likes");
+    const post = await Post.findById(PostId).select("likes userId _id");
     // //console.log(post);
 
     if (!post) {
@@ -102,13 +104,24 @@ exports.handleLike = async (req, res) => {
       runValidators: true,
     });
 
-    // if (post.likes.includes(req.user._id)) {
-    //   post.likes = post.likes.filter((id) => !id.equals(req.user._id));
-    // } else {
-    //   post.likes.push(req.user._id);
-    // }
+    if (!isLiked && post.userId.toString() !== req.user._id) {
+      const notification = await Notification.create({
+        recipient: post.userId,
+        sender: req.user._id,
+        type: "like",
+        post: post._id,
+        message: `${req.user.username} liked your Post`,
+      });
 
-    // const UpdatedPost = await Post.findByIdAndUpdate(PostId,{likes:post.likes},{new:true,runValidators:true});
+      const Populatenotification = await notification.populate(
+        "sender",
+        "username avatar",
+      );
+      sendToUser(post.userId.toString(), {
+        type: "NEW_NOTIFICATION",
+        notification: Populatenotification,
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -147,7 +160,31 @@ exports.handlePostComment = async (req, res) => {
       PostId,
     });
     // //console.log(newcomment);
-    await Post.findByIdAndUpdate(PostId, { $inc: { commentCount: 1 } });
+    const updPost = await Post.findByIdAndUpdate(
+      PostId,
+      { $inc: { commentCount: 1 } },
+      { new: true },
+    );
+
+    if (updPost._id.toString() !== req.user._id) {
+      const notification = await Notification.create({
+        recipient: updPost.userId,
+        sender: req.user._id,
+        type: "comment",
+        post: updPost._id,
+        message: `${req.user.username} comment on your post`,
+      });
+
+      const PopulatedNotification = await notification.populate(
+        "sender",
+        "username avatar",
+      );
+
+      sendToUser(updPost.userId.toString(), {
+        type: "NEW_NOTIFICATION",
+        notification: PopulatedNotification,
+      });
+    }
     return res.status(201).json({
       success: true,
       message: "Comment is added successfully",
@@ -267,14 +304,14 @@ exports.handleDeletePost = async (req, res) => {
       });
     }
     const Post1 = await Post.findById(PostId);
-    if(!Post1){
+    if (!Post1) {
       return res.status(404).json({
-        message:"Post not found"
-      })
+        message: "Post not found",
+      });
     }
 
-      // Ownership check
-    if (Post1.userId.toString() !== (req.user._id).toString()) {
+    // Ownership check
+    if (Post1.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ msg: "Not authorized" });
     }
 
@@ -284,7 +321,6 @@ exports.handleDeletePost = async (req, res) => {
 
     // comment deleting
     await Comment.deleteMany({ PostId: PostId });
-
 
     return res.status(200).json({
       success: true,
@@ -330,10 +366,10 @@ exports.UpdatePost = async (req, res) => {
     // if (req.file) {
     //   imageUrl = `/uploads/${req.file.filename}`;
     // }
-  
+
     let result = null;
     if (req.file) {
-        const fileExtension = path.extname(req.file.originalname);
+      const fileExtension = path.extname(req.file.originalname);
       result = await imagekit.upload({
         file: req.file.buffer.toString("base64"),
         fileName: `post_${Date.now()}${fileExtension}`,
@@ -347,7 +383,7 @@ exports.UpdatePost = async (req, res) => {
         $set: {
           PostContent: PostContent || null,
           image: result?.url || null,
-          imageFileId:result?.fileId || null,
+          imageFileId: result?.fileId || null,
           Location: Location || null,
         },
       },

@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user.js");
 
 // Middleware 1:Authentication
-const isAuthenticated = async (req, res, next) => {
+const isAuthenticated = async (req, res, next) => { 
   try {
     // step 1:header se token nikalo
     // Format: "Authorization: Bearer <token>"
