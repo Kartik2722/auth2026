@@ -4,7 +4,9 @@ const User = require("../models/user");
 const { OAuth2Client } = require("google-auth-library");
 
 // Google OAuth CLIENT BNAO
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  'postmessage'); //React OAuth लाइब्रेरी के लिए इसे 'postmessage' ही रखना होता है 
 
 // Signup controller function
 
@@ -129,15 +131,16 @@ exports.Login = async (req, res) => {
 // POST /api/v1/auth/google
 exports.HandleGoogleLogin = async (req, res) => {
   try {
-    const { credential } = req.body; // Frontend se aya google ka jwt token
-    // //console.log("value: ", credential);
+    const { code } = req.body; 
+    
     // step 1: goggle se verify kro ki yeh token asli hai
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential, //ye token verify krna hai
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
+   const {tokens} = await googleClient.getToken(code);
 
-    // step 2: Token se user ki information nikalo
+    // step 2: Token verify krke user ki information nikalo
+    const ticket = await googleClient.verifyIdToken({
+      idToken:tokens.id_token,
+      audience:process.env.GOOGLE_CLIENT_ID,
+    });
     const payload = ticket.getPayload();
     // //console.log(payload);
     const { sub, email, name, picture, email_verified } = payload;

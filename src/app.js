@@ -23,7 +23,7 @@ app.use(cors()); //is se sari orgin allow hojayegi
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'https://your-app-name.netlify.app'
+    'https://hiveup31.netlify.app/'
   ],
   credentials: true
 }));
